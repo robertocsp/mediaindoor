@@ -1,5 +1,7 @@
 const express = require('express');
 const path = require('path');
+const myServer = require('./server');
+const io = require('socket.io-emitter')({ host: '127.0.0.1', port: 6379 });
 
 module.exports = function(server){
 
@@ -10,9 +12,12 @@ module.exports = function(server){
   const anuncianteService = require('../services/anuncianteService')
   anuncianteService.register(router, '/anunciante')
 
+  server.get('/:channel/:sid', function(req, res){
+	io.emit('message', 'global-message');
+	io.to(req.params.sid).emit('message', 'private-message');
+	io.to(req.params.channel).emit('message', req.params.channel + '-message');
 
-  server.get('/', function(req, res){
-    res.send('Portal Anuncios TV')
+    res.status(200).json({ channel: req.params.channel })
   })
 
   /*

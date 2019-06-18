@@ -4,8 +4,7 @@ const anuncio = require('./anuncio')
 
 const anuncianteSchema = new mongoose.Schema({
     nome: {type: String, required: true},
-    endereco: {type: String, required: true},
-    anuncios:[anuncio]
+    endereco: {type: String, required: true}
 
 })
 

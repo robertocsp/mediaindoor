@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <title>Portal Anuncios TV</title>
+    </head>
+ 
+    <body>
+        <h1>Communicating with socket .io!</h1>
+
+        <p><input type="button" value="Poke the server" id="poke" /></p>
+
+
+        <script src="http://code.jquery.com/jquery-1.10.1.min.js"></script>
+        <script src="/socket.io/socket.io.js"></script>
+        <script>
+            var socket = io.connect('http://localhost:3030');
+			var sid;
+			var socket2 = io.connect('http://localhost:3030');
+			var sid2;
+			var socket3 = io.connect('http://localhost:3030');
+			var sid3;
+			
+			socket.on('connect', function(){
+				sid = socket.id;
+				console.log(sid);
+				console.log('client connected');
+				socket.emit('joinChannel', 'my-channel');
+			});
+			
+			socket2.on('connect', function(){
+				sid2 = socket2.id;
+				console.log(sid2);
+				console.log('client 2 connected');
+			});
+			
+			socket3.on('connect', function(){
+				sid3 = socket3.id;
+				console.log(sid3);
+				console.log('client 3 connected');
+				socket3.emit('joinChannel', 'my-channel');
+			});
+			
+            socket.on('message', function(message) {
+                console.log(sid + ' :: ' + message);
+            });
+			
+            socket2.on('message', function(message) {
+                console.log(sid2 + ' :: ' + message);
+            });
+			
+            socket3.on('message', function(message) {
+                console.log(sid3 + ' :: ' + message);
+            });
+
+            $('#poke').click(function () {
+				$.get('/my-channel/'+sid, function(data)
+				{
+					console.log(data);
+				});
+            });
+        </script>
+    </body>
+</html>
