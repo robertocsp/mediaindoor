@@ -23,6 +23,8 @@ app.use(express.static(__dirname + '/public'));
 // api routes
 app.use('/users', require('../users/users.controller'));
 app.use('/groups', require('../groups/groups.controller'));
+app.use('/places', require('../places/places.controller'));
+app.use('/ads', require('../advertisements/ads.controller'));
 
 // global error handler
 app.use(errorHandler);

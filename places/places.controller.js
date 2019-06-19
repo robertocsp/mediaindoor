@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const groupService = require('./group.service');
+const placeService = require('./place.service');
 const authorize = require('../_helpers/authorize')
 const Role = require('../_helpers/role');
 
@@ -15,37 +15,37 @@ router.delete('/:id', authorize.authorize(), _delete);
 module.exports = router;
 
 function register(req, res, next) {
-   groupService.create(req.body)
+   placeService.create(req.body)
         .then(() => res.json({}))
         .catch(err => next(err));
 }
 
 function getAll(req, res, next) {
-   groupService.getAll()
+   placeService.getAll()
         .then(users => res.json(users))
         .catch(err => next(err));
 }
 
 function getById(req, res, next) {
-   groupService.getById(req.params.id)
+   placeService.getById(req.params.id)
         .then(user => user ? res.json(user) : res.sendStatus(404))
         .catch(err => next(err));
 }
 
 function getByUser(req, res, next) {
-   groupService.getByUser(req.params.id)
+   placeService.getByUser(req.params.id)
         .then(user => user ? res.json(user) : res.sendStatus(404))
         .catch(err => next(err));
 }
 
 function update(req, res, next) {
-   groupService.update(req.params.id, req.body)
+   placeService.update(req.params.id, req.body)
         .then(() => res.json({}))
         .catch(err => next(err));
 }
 
 function _delete(req, res, next) {
-   groupService.delete(req.params.id)
+   placeService.delete(req.params.id)
         .then(() => res.json({}))
         .catch(err => next(err));
 }
