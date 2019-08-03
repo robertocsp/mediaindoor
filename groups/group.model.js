@@ -3,7 +3,7 @@ const Schema = mongoose.Schema;
 
 const schema = new Schema({
     groupname: { type: String, unique: true, required: true },
-	users: [{type: Schema.Types.ObjectId, ref: 'User'}],
+    users: [{ type: Schema.Types.ObjectId, ref: 'User' }],
     createdDate: { type: Date, default: Date.now }
 });
 

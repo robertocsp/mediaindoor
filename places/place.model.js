@@ -2,14 +2,16 @@ const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
 const schema = new Schema({
-    placename: { type: String, unique: true, required: true },
+    placekey: { type: String, unique: true, required: true },
+    placename: { type: String, required: true },
     segment: { type: String, required: true },
-    group: {type: Schema.Types.ObjectId, ref: 'Group'},
+    group: { type: Schema.Types.ObjectId, ref: 'Group', required: true },
     docnumber: { type: String, required: true },
     contact: { type: String, required: true },
-    users: [{type: Schema.Types.ObjectId, ref: 'User'}],
+    users: [{ type: Schema.Types.ObjectId, ref: 'User' }],
     ispublic: { type: Boolean, default: false },
-    targetaudience: [String],
+    adsquantity: { type: Number, default: 5 },
+    tags: [String],
     createdDate: { type: Date, default: Date.now }
 });
 

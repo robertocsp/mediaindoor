@@ -1,12 +1,11 @@
-const config = require('../config/config.json');
-const jwt = require('jsonwebtoken');
-const bcrypt = require('bcryptjs');
 const db = require('../config/database');
 const Ad = db.Ad;
 
 module.exports = {
     getAll,
     getById,
+    getBy,
+    getByGroup,
     getByPlace,
     create,
     update,
@@ -19,6 +18,14 @@ async function getAll() {
 
 async function getById(id) {
     return await Ad.findById(id).select();
+}
+
+async function getBy(clause) {
+    return await Ad.find( clause );
+}
+
+async function getByGroup(group) {
+    return await Ad.find( { groups: group } );
 }
 
 async function getByPlace(place) {

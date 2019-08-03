@@ -1,5 +1,7 @@
 module.exports = {
   SuperAdmin: 'SuperAdmin',
   AdminGrupo: 'AdminGrupo',
-  AdminLocal: 'AdminLocal'
+  AdminLocal: 'AdminLocal',
+  ComumGrupo: 'ComumGrupo',
+  ComumLocal: 'ComumLocal'
 }

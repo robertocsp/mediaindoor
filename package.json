@@ -4,8 +4,9 @@
   "description": "",
   "main": "loader.js",
   "scripts": {
-    "dev": "nodemon",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "nodemon -L",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prd": "node loader.js"
   },
   "author": "",
   "license": "ISC",
@@ -14,9 +15,15 @@
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
+    "biguint-format": "^1.0.1",
     "body-parser": "^1.18.3",
+    "compression": "^1.7.4",
     "express": "^4.16.4",
+    "express-fileupload": "^1.1.5",
     "express-jwt": "^5.3.1",
+    "express-validator": "^6.1.1",
+    "flake-idgen": "^1.1.2",
+    "helmet": "^3.20.0",
     "mongoose": "^5.5.1",
     "node-restful": "^0.2.6",
     "socket.io": "^2.2.0",

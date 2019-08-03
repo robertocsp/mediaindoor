@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <title>Portal Anuncios TV</title>
+    </head>
+ 
+    <body>
+        <h1>Communicating with socket .io!</h1>
+
+        <p><input type="button" value="Poke the server" id="poke" /></p>
+		<p>
+			<form ref='uploadForm' id='uploadForm' 
+			action='/api/v1/ads/register' method='post' encType="multipart/form-data">
+				adname: <input type="text" name="adname" />
+				<br>
+				type: <input type="text" name="type" />
+				<br>
+				duration: <input type="number" name="duration" />
+				<br>
+				targetaudience: <input type="text" name="targetaudience" />
+				<br>
+				mediapath: <input type="file" name="mediapath" />
+				<br>
+				places: 
+				<select name="places" multiple>
+					<option value="5d17b487b7c729336cbd5396">my place</option>
+					<option value="5d17ccaf31d49e5774630c6e">my place 1</option>
+				  </select>
+				<br>
+				<input type='submit' value='Upload!' />
+			</form>
+		</p>
+
+        <script src="http://code.jquery.com/jquery-1.10.1.min.js"></script>
+        <script src="/socket.io/socket.io.js"></script>
+        <script>
+            var socket = io.connect('http://localhost:3030');
+			var sid;
+			var socket2 = io.connect('http://localhost:3030');
+			var sid2;
+			var socket3 = io.connect('http://localhost:3030');
+			var sid3;
+			
+			socket.on('connect', function(){
+				sid = socket.id;
+				console.log(sid);
+				console.log('client connected');
+				socket.emit('joinChannel', '5d17b487b7c729336cbd5396');
+				socket.emit('joinChannel', 'group-channel');
+			});
+			
+			socket2.on('connect', function(){
+				sid2 = socket2.id;
+				console.log(sid2);
+				console.log('client 2 connected');
+			});
+			
+			socket3.on('connect', function(){
+				sid3 = socket3.id;
+				console.log(sid3);
+				console.log('client 3 connected');
+				socket3.emit('joinChannel', '5d17b487b7c729336cbd5396');
+			});
+			
+            socket.on('message', function(message) {
+				console.log(sid + ' :: ' + message);
+				console.log(message);
+            });
+			
+            socket2.on('message', function(message) {
+				console.log(sid2 + ' :: ' + message);
+				console.log(message);
+            });
+			
+            socket3.on('message', function(message) {
+				console.log(sid3 + ' :: ' + message);
+				console.log(message);
+            });
+
+            $('#poke').click(function () {
+				$.get('/group-channel/'+sid, function(data)
+				{
+					console.log(data);
+				});
+				$.post('/my-channel/users/authenticate', {
+					"username": "gusvin",
+					"password": "12345678"
+				},function(data)
+				{
+					console.log(data);
+				});
+			});
+			
+			$("form#uploadForm").submit(function(e) {
+				e.preventDefault();    
+				var formData = new FormData(this);
+
+				$.ajax({
+					url: '/api/v1/ads/register',
+					type: 'POST',
+					data: formData,
+					success: function (data) {
+						console.log(data)
+					},
+					cache: false,
+					contentType: false,
+					processData: false,
+					beforeSend: function (xhr) {
+						/* Authorization header */
+						xhr.setRequestHeader("Authorization", "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1ZDA4NTEwMDU1NmNiMzBkNjA2OTZmYzQiLCJyb2xlIjoiU3VwZXJBZG1pbiIsImlhdCI6MTU2MTQyOTAyM30.yYVSbg_KhmvHnMckNla3iKijYCo1k3_khBPUznia71c");
+					}
+				});
+			});
+        </script>
+    </body>
+</html>

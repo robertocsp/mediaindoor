@@ -3,16 +3,20 @@ const Schema = mongoose.Schema;
 
 /*
 types:
-1 - HTML
-2- IMG
-3 - VIDEO
+1 - IMG
+2 - VIDEO
+3 - HTML
 */
 const schema = new Schema({
     adname: { type: String, unique: true, required: true },
-    places: [{type: Schema.Types.ObjectId, ref: 'Place'}],
+    groups: [{ type: Schema.Types.ObjectId, ref: 'Group' }],
+    places: [{ type: Schema.Types.ObjectId, ref: 'Place' }],
     type: { type: Number, min: 1, max: 3, required: true },
-    duration: { type: Number, max: 60, required: true },
-    targetaudience: [String],
+    mimetype: { type: String },
+    duration: { type: Number, max: 60 },
+    weight: { type: Number },
+    tags: [String],
+    mediapath: { type: String },
     createdDate: { type: Date, default: Date.now }
 });
 

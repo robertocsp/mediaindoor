@@ -1,6 +1,4 @@
-const config = require('../config/config.json');
-const jwt = require('jsonwebtoken');
-const bcrypt = require('bcryptjs');
+const Role = require('../_helpers/role');
 const db = require('../config/database');
 const Group = db.Group;
 
@@ -8,21 +6,34 @@ module.exports = {
     getAll,
     getById,
     getByUser,
+    getBy,
     create,
     update,
-    delete: _delete
+    delete: _delete,
+    checkUserGroup
 };
 
 async function getAll() {
-    return await Group.find().populate('users', '-hash').select();
+    return await Group.find().populate('users', '-hash');
 }
 
-async function getById(id) {
-    return await Group.findById(id).select();
+async function getById(id, userId, userRole) {
+    if (!userId || userRole === Role.SuperAdmin) {
+        return await Group.findById(id);
+    }
+    group = await Group.find({ _id: id, users: userId }).select('-users');
+    if(group.length) {
+        return group[0];
+    }
+    return;
 }
 
 async function getByUser(user) {
-    return await Group.find( { users: user } );
+    return await Group.find({ users: user }).select('-users');
+}
+
+async function getBy(clause) {
+    return await Group.find(clause).select('-users');
 }
 
 async function create(groupParam) {
@@ -37,12 +48,12 @@ async function create(groupParam) {
     await group.save();
 }
 
-async function update(id, groupParam) {
-    const group = await Group.findById(id);
+async function update(id, user, groupParam) {
+    const group = await getById(id, user.sub, user.role);
 
     // validate
     if (!group) throw 'Group not found';
-    if (group.groupname !== groupParam.groupname && await Group.findOne({ groupname: groupParam.groupname })) {
+    if (groupParam.groupname && group.groupname !== groupParam.groupname && await Group.findOne({ groupname: groupParam.groupname })) {
         throw 'Groupname "' + groupParam.groupname + '" is already taken';
     }
 
@@ -54,4 +65,11 @@ async function update(id, groupParam) {
 
 async function _delete(id) {
     await Group.findByIdAndRemove(id);
+}
+
+async function checkUserGroup(group, user) {
+    if(user.role === Role.SuperAdmin) {
+        return true;
+    }
+    return await Group.find({ _id: group, users: user.sub }) != 0;
 }
