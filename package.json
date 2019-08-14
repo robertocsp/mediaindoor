@@ -24,6 +24,7 @@
     "express-validator": "^6.1.1",
     "flake-idgen": "^1.1.2",
     "helmet": "^3.20.0",
+    "memcached": "^2.2.2",
     "mongoose": "^5.5.1",
     "node-restful": "^0.2.6",
     "socket.io": "^2.2.0",

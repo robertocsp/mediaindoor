@@ -5,12 +5,12 @@ const authorize = require('../_helpers/authorize')
 const Role = require('../_helpers/role');
 
 // routes
-router.post('/register', authorize.authorize(), register);
-router.get('/', authorize.authorize(), getAll);
+router.post('/register', authorize.isSuperUser(), register);
+router.get('/', getAll);
 router.get('/:id', authorize.authorize([Role.AdminGrupo]), getById);
 router.get('/user/:id', authorize.authorize([Role.AdminGrupo]), getByUser);
 router.put('/:id', authorize.authorize([Role.AdminGrupo]), update);
-router.delete('/:id', authorize.authorize(), _delete);
+router.delete('/:id', authorize.isSuperUser(), _delete);
 
 module.exports = router;
 
@@ -21,7 +21,7 @@ function register(req, res, next) {
 }
 
 function getAll(req, res, next) {
-        groupService.getAll()
+        groupService.getAll(req.user)
                 .then(groups => res.json(groups))
                 .catch(err => next(err));
 }

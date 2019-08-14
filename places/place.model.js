@@ -1,3 +1,4 @@
+const Role = require('../_helpers/role');
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
@@ -8,7 +9,14 @@ const schema = new Schema({
     group: { type: Schema.Types.ObjectId, ref: 'Group', required: true },
     docnumber: { type: String, required: true },
     contact: { type: String, required: true },
-    users: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+    users: [
+        {
+            user: { type: Schema.Types.ObjectId, ref: 'User' },
+            role: {
+                type: String, enum: [Role.AdminLocal, Role.ComumLocal]
+            }
+        }
+    ],
     ispublic: { type: Boolean, default: false },
     adsquantity: { type: Number, default: 5 },
     tags: [String],

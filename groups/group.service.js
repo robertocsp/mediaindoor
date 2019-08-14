@@ -1,11 +1,16 @@
 const Role = require('../_helpers/role');
+const ObjectId = require('mongodb').ObjectID;
 const db = require('../config/database');
 const Group = db.Group;
 
 module.exports = {
     getAll,
     getById,
+    getByIdAndUser,
+    getByIdUserAndRoles,
     getByUser,
+    getByUserAndRoles,
+    getByUserAndRolesAndNotInId,
     getBy,
     create,
     update,
@@ -13,23 +18,43 @@ module.exports = {
     checkUserGroup
 };
 
-async function getAll() {
-    return await Group.find().populate('users', '-hash');
+async function getAll(user) {
+    if(user.isSU) {
+        return await Group.find().populate('users.user', '-hash');
+    }
+    return await getByUserAndRoles(user.sub, [Role.AdminGrupo, Role.ComumGrupo]);
 }
 
-async function getById(id, userId, userRole) {
-    if (!userId || userRole === Role.SuperAdmin) {
-        return await Group.findById(id);
+async function getById(id) {
+    return await Group.findById(id);
+}
+
+async function getByIdAndUser(id, userId) {
+    return await getByIdUserAndRoles(id, userId);
+}
+
+async function getByIdUserAndRoles(id, userId, roles) {
+    let clause = { _id: id, 'users': { $elemMatch: { 'user': userId } } };
+    if(roles && roles.length) {
+        clause['users']['$elemMatch']['role'] = { $in: roles };
     }
-    group = await Group.find({ _id: id, users: userId }).select('-users');
+    group = await getBy(clause);
     if(group.length) {
         return group[0];
     }
     return;
 }
 
-async function getByUser(user) {
-    return await Group.find({ users: user }).select('-users');
+async function getByUser(userId) {
+    return await getBy({ 'users.user': userId });
+}
+
+async function getByUserAndRoles(userId, roles) {
+    return await getBy({ 'users': { $elemMatch: { 'user': userId, 'role': { $in: roles } } } });
+}
+
+async function getByUserAndRolesAndNotInId(groups, userId, roles) {
+    return await getBy({ _id: { $nin: groups }, 'users': { $elemMatch: { 'user': userId, 'role': { $in: roles } } } });
 }
 
 async function getBy(clause) {
@@ -49,7 +74,7 @@ async function create(groupParam) {
 }
 
 async function update(id, user, groupParam) {
-    const group = await getById(id, user.sub, user.role);
+    const group = user.isSU ? await getById(id) : await getByIdUserAndRoles(id, user.sub, [Role.AdminGrupo]);
 
     // validate
     if (!group) throw 'Group not found';
@@ -68,8 +93,8 @@ async function _delete(id) {
 }
 
 async function checkUserGroup(group, user) {
-    if(user.role === Role.SuperAdmin) {
+    if(user.isSU) {
         return true;
     }
-    return await Group.find({ _id: group, users: user.sub }) != 0;
+    return await getByIdUserAndRoles(group, user.sub, [Role.AdminGrupo]) ? true : false;
 }

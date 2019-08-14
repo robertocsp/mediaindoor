@@ -23,102 +23,27 @@ module.exports = {
 
 let secretTokenPriv = fs.readFileSync('keys/jwt-secret.ppk');
 
-function authenticateUser(user, params) {
+function authenticateUser(user) {
     const { hash, ...userWithoutHash } = user.toObject();
-    let payload = { sub: user.id, role: user.role };
-    if(params.group) {
-        payload.group = params.group;
-    }
-    if(params.place) {
-        payload.place = params.place;
-    }
+    let payload = { sub: user.id, isSU: user.isSU };
     const token = jwt.sign(payload, secretTokenPriv, { algorithm: 'RS256', expiresIn: '1y' });
     return {
         ...userWithoutHash,
-        token,
-        group: params.group,
-        place: params.place
+        token
     };
 }
 
-async function authenticate({ username, password, group, place }) {
+async function authenticate({ username, password }) {
     const user = await User.findOne({ username }).select('-createdDate');
     if (user && bcrypt.compareSync(password, user.hash)) {
-        if (user.role === Role.SuperAdmin) {
-            return authenticateUser(user, {});
-        } else if (user.role === Role.AdminGrupo || user.role === Role.ComumGrupo) {
-            return authenticateUserFromGroup();
-        } else if (user.role === Role.AdminLocal || user.role === Role.ComumLocal) {
-            return authenticateUserFromPlace();
-        }
-    }
-
-    function authenticateUserFromGroup() {
-        if (group) {
-            return groupService.getById(group, user._id, user.role)
-                .then(group => {
-                    /*
-                    if (!group.users.some(function (user) {
-                        return user.equals(user._id);
-                    })) {
-                        return;
-                    }
-                    */
-                    if (!group) {
-                        return;
-                    }
-                    return authenticateUser(user, { group: group });
-                })
-                .catch(err => {
-                    throw Error(err);
-                });
-        }
-        return groupService.getByUser(user._id)
-            .then(groups => {
-                if (groups.length !== 1) {
-                    return {
-                        groups: groups
-                    };
-                }
-                return authenticateUser(user, { group: groups[0] });
-            })
-            .catch(err => {
-                throw Error(err);
-            });
-    }
-
-    function authenticateUserFromPlace() {
-        if (place) {
-            return placeService.getById(place, user._id, user.role)
-                .then(place => {
-                    if (!place) {
-                        return;
-                    }
-                    return authenticateUser(user, { place: place });
-                })
-                .catch(err => {
-                    throw Error(err);
-                });
-        }
-        return placeService.getByUser(user._id)
-            .then(places => {
-                if (places.length !== 1) {
-                    return {
-                        places: places
-                    };
-                }
-                return authenticateUser(user, { place: places[0] });
-            })
-            .catch(err => {
-                throw Error(err);
-            });
+        return authenticateUser(user);
     }
 }
 
-async function getUserToken({ username, password, group, place }) {
+async function getUserToken({ username, password }) {
     const user = await User.findOne({ username });
     if (user && bcrypt.compareSync(password, user.hash)) {
-        return authenticateUser(user, {});
+        return authenticateUser(user);
     }
 }
 

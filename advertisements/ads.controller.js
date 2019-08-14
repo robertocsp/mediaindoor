@@ -11,14 +11,29 @@ const FlakeIdGen = require('flake-idgen'),
         generator = new FlakeIdGen()
 
 // routes
-router.post('/register', authorize.authorize(), uploadAd, register, updatePlace);
-router.get('/', authorize.authorize([Role.SuperAdmin]), getAll);
+router.post('/register', validateAdRegister, uploadAd, register, updatePlace);
+router.get('/', getAll);
 router.get('/:id', authorize.authorize(), getById);
 router.get('/place/:id', authorize.authorize(), getByPlace);
-router.put('/:id', authorize.authorize(), update);
-router.delete('/:id', authorize.authorize(), _delete);
+router.put('/:id', validateAdRegister, update, updatePlace);
+router.delete('/:id', validateAdDelete, _delete);
 
 module.exports = router;
+//TODO IMPLEMENTAR AS VALIDAÇÕES
+function validateAdRegister(req, res, next) {
+        if (!req.body.places || req.body.places && !Array.isArray(req.body.places) && typeof req.body.places === 'string' && req.body.places.trim() === '') {
+                delete req.body.places;
+        } else if (req.body.places && !Array.isArray(req.body.places)) {
+                req.body.places = [req.body.places];
+        }
+        if (!req.body.groups || req.body.groups && !Array.isArray(req.body.groups) && typeof req.body.groups === 'string' && req.body.groups.trim() === '') {
+                delete req.body.groups;
+        } else if (req.body.groups && !Array.isArray(req.body.groups)) {
+                req.body.groups = [req.body.groups];
+        }
+
+        next();
+}
 
 function uploadAd(req, res, next) {
         let uploadFile;
@@ -30,7 +45,7 @@ function uploadAd(req, res, next) {
         }
 
         //console.log('req.files >>>', req.files); // eslint-disable-line
-        console.log('UPLOAD!!!');
+
         uploadFile = req.files.mediapath;
         folderid = intformat(generator.next(), 'dec');
         uploadPath = __dirname + '/../staticfiles/uploads/' + folderid + '/' + uploadFile.name;
@@ -45,20 +60,8 @@ function uploadAd(req, res, next) {
 }
 
 function register(req, res, next) {
-        if (!req.body.places || req.body.places && !Array.isArray(req.body.places) && typeof req.body.places === 'string' && req.body.places.trim() === '') {
-                delete req.body.places;
-        } else if (req.body.places && !Array.isArray(req.body.places)) {
-                req.body.places = [req.body.places];
-        }
-        if (!req.body.groups || req.body.groups && !Array.isArray(req.body.groups) && typeof req.body.groups === 'string' && req.body.groups.trim() === '') {
-                delete req.body.groups;
-        } else if (req.body.groups && !Array.isArray(req.body.groups)) {
-                req.body.groups = [req.body.groups];
-        }
-        console.log('CREATE!!!');
         adService.create(req.body)
                 .then(() => {
-                        console.log('NEXTTTT');
                         next();
                 })
                 .catch(err => {
@@ -69,18 +72,19 @@ function register(req, res, next) {
 }
 
 async function updatePlace(req, res, next) {
-        console.log('UPDATE!!!');
-        if (req.body.groups) {
-                for (let group of req.body.groups) {
-                        console.log(group);
-                        groupPlaces = await placeService.getBy({ group: group }, 'places').then(places => places).catch(err => next(err));
+        await emitMessageToClient(req.body.groups, req.body.places, next);
+        res.json({});
+}
 
+async function emitMessageToClient(groupsList, placesList, next) {
+        if (groupsList) {
+                for (let group of groupsList) {
+                        groupPlaces = await placeService.getBy({ group: group }, 'places').then(places => places).catch(err => next(err));
                         adService.getBy({
                                 $or: [{ groups: ObjectId(group) },
                                 { places: { $in: groupPlaces } }]
                         })
                                 .then(ads => {
-                                        console.log('ADS CONTROLLER :: ' + ads);
                                         for (let place of groupPlaces) {
                                                 io.to(place._id).emit('ads-message', JSON.stringify(ads));
                                         }
@@ -88,25 +92,23 @@ async function updatePlace(req, res, next) {
                                 .catch(err => next(err));
                 }
         }
-        if (req.body.places) {
-                for (let place of req.body.places) {
+        if (placesList) {
+                for (let place of placesList) {
                         place = await placeService.getById(place).then(place => place).catch(err => next(err));
                         adService.getBy({
                                 $or: [{ groups: ObjectId(place.group) },
                                 { places: ObjectId(place._id) }]
                         })
                                 .then(ads => {
-                                        console.log('ADS CONTROLLER');
                                         io.to(place._id).emit('ads-message', JSON.stringify(ads));
                                 })
                                 .catch(err => next(err));
                 }
         }
-        res.json({});
 }
 
 function getAll(req, res, next) {
-        adService.getAll()
+        adService.getAll(req.query._page, req.query._limit, req.user)
                 .then(ads => res.json(ads))
                 .catch(err => next(err));
 }
@@ -125,21 +127,25 @@ function getByPlace(req, res, next) {
 
 function update(req, res, next) {
         adService.update(req.params.id, req.body)
-                .then(() => res.json({}))
+                .then(() => next())
                 .catch(err => next(err));
 }
 
+function validateAdDelete(req, res, next) {
+        next();
+}
+
 function _delete(req, res, next) {
-        adService.getById(req.params.id)
-                .then(ad => {
+        adService.delete(req.params.id)
+                .then((ad) => {
                         if (ad) {
                                 removeFile(ad.mediapath);
+                                emitMessageToClient(ad.groups, ad.places, next);
+                                res.json({});
+                        } else {
+                                res.status(204).send('No ad found.');
                         }
                 })
-                .catch(err => next(err));
-
-        adService.delete(req.params.id)
-                .then(() => res.json({}))
                 .catch(err => next(err));
 }
 

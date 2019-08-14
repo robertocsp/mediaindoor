@@ -9,9 +9,11 @@ const groupService = require('../groups/group.service');
 router.post('/register', authorize.authorize([Role.AdminGrupo]), register);
 router.put('/:id', authorize.authorize([Role.AdminGrupo, Role.AdminLocal]), update);
 router.delete('/:id', authorize.authorize([Role.AdminGrupo, Role.AdminLocal]), _delete);
-router.get('/', authorize.authorize(), getAll);
+router.get('/', getAll);
 router.get('/:id', authorize.authorize([Role.AdminGrupo, Role.AdminLocal]), getById);
 router.get('/user/:id', authorize.authorize([Role.AdminGrupo, Role.AdminLocal]), getByUser);
+router.get('/group/:id', authorize.authorize([Role.AdminGrupo, Role.AdminLocal]), getByGroup);
+router.get('/nigroup/:id', authorize.authorize([Role.AdminGrupo, Role.AdminLocal]), getByNotInGroup);
 
 module.exports = router;
 
@@ -30,8 +32,8 @@ function register(req, res, next) {
 }
 
 function getAll(req, res, next) {
-        placeService.getAll()
-                .then(users => res.json(users))
+        placeService.getAll(req.user)
+                .then(places => res.json(places))
                 .catch(err => next(err));
 }
 
@@ -43,6 +45,18 @@ function getById(req, res, next) {
 
 function getByUser(req, res, next) {
         placeService.getByUser(req.params.id)
+                .then(places => places ? res.json(places) : res.sendStatus(404))
+                .catch(err => next(err));
+}
+
+function getByGroup(req, res, next) {
+        placeService.getByGroup(req.params.id)
+                .then(places => places ? res.json(places) : res.sendStatus(404))
+                .catch(err => next(err));
+}
+
+function getByNotInGroup(req, res, next) {
+        placeService.getByNotInGroup(req.params.id, req.user)
                 .then(places => places ? res.json(places) : res.sendStatus(404))
                 .catch(err => next(err));
 }
