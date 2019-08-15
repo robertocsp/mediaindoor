@@ -21,7 +21,7 @@ module.exports = {
     delete: _delete
 };
 
-let secretTokenPriv = fs.readFileSync('keys/jwt-secret.ppk');
+let secretTokenPriv = fs.readFileSync('keys/jwt-secret.pem');
 
 function authenticateUser(user) {
     const { hash, ...userWithoutHash } = user.toObject();
