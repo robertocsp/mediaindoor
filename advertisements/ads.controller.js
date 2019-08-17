@@ -15,7 +15,7 @@ router.post('/register', validateAdRegister, uploadAd, register, updatePlace);
 router.get('/', getAll);
 router.get('/:id', authorize.authorize(), getById);
 router.get('/place/:id', authorize.authorize(), getByPlace);
-router.put('/:id', validateAdRegister, update, updatePlace);
+router.put('/:id', validateAdRegister, uploadAd, update, updatePlace);
 router.delete('/:id', validateAdDelete, _delete);
 
 module.exports = router;
@@ -35,13 +35,24 @@ function validateAdRegister(req, res, next) {
         next();
 }
 
-function uploadAd(req, res, next) {
+async function uploadAd(req, res, next) {
+        if(req.params.id) {
+                req.currentAd = await adService.getById(req.params.id);
+        }
+
         let uploadFile;
         let uploadPath;
 
         if (!req.files || Object.keys(req.files).length == 0) {
-                res.status(400).send('No files were uploaded.');
-                return;
+                if(req.currentAd) {
+                        next();
+                } else {
+                        res.status(400).send('No files were uploaded.');
+                        return;
+                }
+        }
+        if(req.currentAd) {
+                removeFile(req.currentAd.mediapath);
         }
 
         //console.log('req.files >>>', req.files); // eslint-disable-line
@@ -126,7 +137,7 @@ function getByPlace(req, res, next) {
 }
 
 function update(req, res, next) {
-        adService.update(req.params.id, req.body)
+        adService.update(req.currentAd, req.body)
                 .then(() => next())
                 .catch(err => next(err));
 }

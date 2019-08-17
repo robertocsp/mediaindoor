@@ -24,7 +24,7 @@ async function getAll(page, itemsPerPage, user) {
 }
 
 async function getById(id) {
-    return await Ad.findById(id).select();
+    return await Ad.findById(id);
 }
 
 async function getBy(clause) {
@@ -51,8 +51,8 @@ async function create(adParam) {
     await ad.save();
 }
 
-async function update(id, adParam) {
-    const ad = await Ad.findById(id);
+async function update(ad, adParam) {
+    // const ad = await Ad.findById(id);
 
     // validate
     if (!ad) throw 'Ad not found';
