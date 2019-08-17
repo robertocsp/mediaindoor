@@ -3,3 +3,5 @@ uploads/
 data/
 mediaindoor.env
 keys/
+ecosystem.config.example.js
+ecosystem.config.js
