@@ -21,14 +21,19 @@ function register(req, res, next) {
 }
 
 function getAll(req, res, next) {
-        groupService.getAll(req.user)
-                .then(groups => res.json(groups))
+        let groupPromise;
+        if(req.query._page && req.query._limit) {
+                groupPromise = groupService.getAllPaginated(req.query._page, req.query._limit, req.user);
+        } else {
+                groupPromise = groupService.getAll(req.user);
+        }
+        groupPromise.then(groups => res.json(groups))
                 .catch(err => next(err));
 }
 
 function getById(req, res, next) {
         groupService.getById(req.params.id, req.user)
-                .then(group => user ? res.json(group) : res.sendStatus(404))
+                .then(group => group ? res.json(group) : res.sendStatus(404))
                 .catch(err => next(err));
 }
 

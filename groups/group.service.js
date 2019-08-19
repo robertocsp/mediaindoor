@@ -5,6 +5,7 @@ const Group = db.Group;
 
 module.exports = {
     getAll,
+    getAllPaginated,
     getById,
     getByIdAndUser,
     getByIdUserAndRoles,
@@ -23,6 +24,17 @@ async function getAll(user) {
         return await Group.find().populate('users.user', '-hash');
     }
     return await getByUserAndRoles(user.sub, [Role.AdminGrupo, Role.ComumGrupo]);
+}
+
+async function getAllPaginated(page, itemsPerPage, user) {
+    if (user.isSU) {
+        let groups = await Group.find()
+            .skip((page - 1) * itemsPerPage)
+            .limit(itemsPerPage * 1)
+            .populate('users.user', '-hash').select();
+        let groupsCount = await Group.count();
+        return { groupsCount: groupsCount, groups: groups };
+    }
 }
 
 async function getById(id) {
