@@ -32,7 +32,7 @@ async function getAllPaginated(page, itemsPerPage, user) {
             .skip((page - 1) * itemsPerPage)
             .limit(itemsPerPage * 1)
             .populate('users.user', '-hash').select();
-        let groupsCount = await Group.count();
+        let groupsCount = await Group.countDocuments();
         return { groupsCount: groupsCount, groups: groups };
     }
 }

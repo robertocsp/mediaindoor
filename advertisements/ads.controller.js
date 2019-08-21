@@ -3,6 +3,7 @@ const router = express.Router();
 const adService = require('./ad.service');
 const placeService = require('../places/place.service');
 const authorize = require('../_helpers/authorize')
+const util = require('../_helpers/util')
 const Role = require('../_helpers/role');
 const ObjectId = require('mongodb').ObjectID;
 const io = require('socket.io-emitter')({ host: 'redis', port: 6379 });
@@ -22,16 +23,15 @@ module.exports = router;
 //TODO IMPLEMENTAR AS VALIDAÇÕES
 function validateAdRegister(req, res, next) {
         if (!req.body.places || req.body.places && !Array.isArray(req.body.places) && typeof req.body.places === 'string' && req.body.places.trim() === '') {
-                delete req.body.places;
+                req.body.places = [];
         } else if (req.body.places && !Array.isArray(req.body.places)) {
-                req.body.places = [req.body.places];
+                req.body.places = req.body.places.split(',');
         }
         if (!req.body.groups || req.body.groups && !Array.isArray(req.body.groups) && typeof req.body.groups === 'string' && req.body.groups.trim() === '') {
-                delete req.body.groups;
+                req.body.groups = [];
         } else if (req.body.groups && !Array.isArray(req.body.groups)) {
-                req.body.groups = [req.body.groups];
+                req.body.groups = req.body.groups.split(',');
         }
-
         next();
 }
 
@@ -48,8 +48,8 @@ async function uploadAd(req, res, next) {
                         next();
                 } else {
                         res.status(400).send('No files were uploaded.');
-                        return;
                 }
+                return;
         }
         if(req.currentAd) {
                 removeFile(req.currentAd.mediapath);
@@ -83,6 +83,18 @@ function register(req, res, next) {
 }
 
 async function updatePlace(req, res, next) {
+        if(req.currentAd) {
+                if(req.currentAdGroups && req.body.groups) {
+                        req.body.groups = util.arrayUnique(req.currentAdGroups.concat(req.body.groups));
+                } else if(req.currentAdGroups) {
+                        req.body.groups = req.currentAdGroups;
+                }
+                if(req.currentAdPlaces && req.body.places) {
+                        req.body.places = util.arrayUnique(req.currentAdPlaces.concat(req.body.places));
+                } else if(req.currentAdPlaces) {
+                        req.body.places = req.currentAdPlaces;
+                }
+        }
         await emitMessageToClient(req.body.groups, req.body.places, next);
         res.json({});
 }
@@ -91,29 +103,25 @@ async function emitMessageToClient(groupsList, placesList, next) {
         if (groupsList) {
                 for (let group of groupsList) {
                         groupPlaces = await placeService.getBy({ group: group }, 'places').then(places => places).catch(err => next(err));
-                        adService.getBy({
-                                $or: [{ groups: ObjectId(group) },
-                                { places: { $in: groupPlaces } }]
-                        })
-                                .then(ads => {
-                                        for (let place of groupPlaces) {
-                                                io.to(place._id).emit('ads-message', JSON.stringify(ads));
-                                        }
-                                })
-                                .catch(err => next(err));
+                        groupPlaces = Array.prototype.map.call(groupPlaces, function(item) { return item._id; });
+                        await emitMessageToPlaces(util.arrayDiff(groupPlaces.concat(placesList)));
                 }
         }
-        if (placesList) {
-                for (let place of placesList) {
-                        place = await placeService.getById(place).then(place => place).catch(err => next(err));
-                        adService.getBy({
-                                $or: [{ groups: ObjectId(place.group) },
-                                { places: ObjectId(place._id) }]
-                        })
-                                .then(ads => {
-                                        io.to(place._id).emit('ads-message', JSON.stringify(ads));
+        await emitMessageToPlaces(placesList);
+
+        async function emitMessageToPlaces(placesList) {
+                if (placesList) {
+                        for (let place of placesList) {
+                                place = await placeService.getById(place).then(place => place).catch(err => next(err));
+                                adService.getBy({
+                                        $or: [{ groups: ObjectId(place.group) },
+                                        { places: ObjectId(place._id) }]
                                 })
-                                .catch(err => next(err));
+                                        .then(ads => {
+                                                io.to(place._id).emit('ads-message', JSON.stringify(ads));
+                                        })
+                                        .catch(err => next(err));
+                        }
                 }
         }
 }
@@ -137,6 +145,8 @@ function getByPlace(req, res, next) {
 }
 
 function update(req, res, next) {
+        req.currentAdGroups = req.currentAd.groups;
+        req.currentAdPlaces = req.currentAd.places;
         adService.update(req.currentAd, req.body)
                 .then(() => next())
                 .catch(err => next(err));

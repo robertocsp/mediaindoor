@@ -15,10 +15,11 @@ module.exports = {
 async function getAll(page, itemsPerPage, user) {
     if (user.isSU) {
         let ads = await Ad.find()
+            .populate('places', 'placename')
+            .populate('groups', 'groupname')
             .skip((page - 1) * itemsPerPage)
-            .limit(itemsPerPage * 1)
-            .populate('places').select();
-        let adsCount = await Ad.count();
+            .limit(itemsPerPage * 1);
+        let adsCount = await Ad.countDocuments();
         return { adsCount: adsCount, ads: ads };
     }
 }
@@ -59,11 +60,8 @@ async function update(ad, adParam) {
     if (ad.adname !== adParam.adname && await Ad.findOne({ adname: adParam.adname })) {
         throw 'Adname "' + adParam.adname + '" is already taken';
     }
-    console.log('AD params:::');
-    console.log(adParam);
     // copy adParam properties to ad
     Object.assign(ad, adParam);
-
     await ad.save();
 }
 
