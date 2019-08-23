@@ -28,8 +28,12 @@ async function getById(id) {
     return await Ad.findById(id);
 }
 
-async function getBy(clause) {
-    return await Ad.find(clause);
+async function getBy(clause, sort) {
+    let q = Ad.find(clause);
+    if(sort) {
+        q.sort(sort);
+    }
+    return await q;
 }
 
 async function getByGroup(group) {

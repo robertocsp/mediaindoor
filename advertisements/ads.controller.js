@@ -22,6 +22,9 @@ router.delete('/:id', validateAdDelete, _delete);
 module.exports = router;
 //TODO IMPLEMENTAR AS VALIDAÇÕES
 function validateAdRegister(req, res, next) {
+        if(res.statusCode === 413) {
+                return;
+        }
         if (!req.body.places || req.body.places && !Array.isArray(req.body.places) && typeof req.body.places === 'string' && req.body.places.trim() === '') {
                 req.body.places = [];
         } else if (req.body.places && !Array.isArray(req.body.places)) {
@@ -116,7 +119,7 @@ async function emitMessageToClient(groupsList, placesList, next) {
                                 adService.getBy({
                                         $or: [{ groups: ObjectId(place.group) },
                                         { places: ObjectId(place._id) }]
-                                })
+                                }, '-weight')
                                         .then(ads => {
                                                 io.to(place._id).emit('ads-message', JSON.stringify(ads));
                                         })

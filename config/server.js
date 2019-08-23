@@ -38,8 +38,9 @@ app.use(fileUpload({
 	createParentPath: true,
 	limits: { fileSize: 1024 * 1024 }, // 1mb
 	safeFileNames: true,
-	abortOnLimit: true,
-	preserveExtension: true
+	preserveExtension: true,
+	responseOnLimit: 'Tamanho do arquivo nao pode ultrapassar 1 MB.',
+	abortOnLimit: true
 }));
 
 server.listen(port, () => {
@@ -61,7 +62,7 @@ io.on('connection', (socket) => {
 					ads = adService.getBy({
 						$or: [{ groups: ObjectId(place.group) },
 						{ places: ObjectId(place._id) }]
-					})
+					}, '-weight')
 						.then(ads => {
 							console.log('ADS JOINPLACE');
 							socket.emit('ads-message', JSON.stringify(ads));
