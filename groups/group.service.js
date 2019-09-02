@@ -12,6 +12,8 @@ module.exports = {
     getByUser,
     getByUserAndRoles,
     getByUserAndRolesAndNotInId,
+    getByUserAndNotInId,
+    getByIdsAndNotEqUser,
     getBy,
     create,
     update,
@@ -20,7 +22,7 @@ module.exports = {
 };
 
 async function getAll(user) {
-    if(user.isSU) {
+    if (user.isSU) {
         return await Group.find().populate('users.user', '-hash');
     }
     return await getByUserAndRoles(user.sub, [Role.AdminGrupo, Role.ComumGrupo]);
@@ -35,10 +37,33 @@ async function getAllPaginated(page, itemsPerPage, user) {
         let groupsCount = await Group.countDocuments();
         return { groupsCount: groupsCount, groups: groups };
     }
+
+    let groups = await Group.find({
+        'users': {
+            $elemMatch: {
+                'user': user.sub, 'role': {
+                    $in: [Role.AdminGrupo, Role.ComumGrupo]
+                }
+            }
+        }
+    })
+        .skip((page - 1) * itemsPerPage)
+        .limit(itemsPerPage * 1)
+        .populate('users.user', '-hash').select();
+    let groupsCount = await Group.countDocuments({
+        'users': {
+            $elemMatch: {
+                'user': user.sub, 'role': {
+                    $in: [Role.AdminGrupo, Role.ComumGrupo]
+                }
+            }
+        }
+    });
+    return { groupsCount: groupsCount, groups: groups };
 }
 
 async function getById(id) {
-    return await Group.findById(id);
+    return await Group.findById(id).populate('users.user', '-hash');
 }
 
 async function getByIdAndUser(id, userId) {
@@ -47,11 +72,11 @@ async function getByIdAndUser(id, userId) {
 
 async function getByIdUserAndRoles(id, userId, roles) {
     let clause = { _id: id, 'users': { $elemMatch: { 'user': userId } } };
-    if(roles && roles.length) {
+    if (roles && roles.length) {
         clause['users']['$elemMatch']['role'] = { $in: roles };
     }
     group = await getBy(clause);
-    if(group.length) {
+    if (group.length) {
         return group[0];
     }
     return;
@@ -65,12 +90,20 @@ async function getByUserAndRoles(userId, roles) {
     return await getBy({ 'users': { $elemMatch: { 'user': userId, 'role': { $in: roles } } } });
 }
 
-async function getByUserAndRolesAndNotInId(groups, userId, roles) {
-    return await getBy({ _id: { $nin: groups }, 'users': { $elemMatch: { 'user': userId, 'role': { $in: roles } } } });
+async function getByUserAndRolesAndNotInId(groups, userId, roles, selection = '-users') {
+    return await getBy({ _id: { $nin: groups }, 'users': { $elemMatch: { 'user': userId, 'role': { $in: roles } } } }, selection);
 }
 
-async function getBy(clause) {
-    return await Group.find(clause).select('-users');
+async function getByUserAndNotInId(groups, userId) {
+    return await Group.find({ _id: { $nin: groups }, 'users.user': userId });
+}
+
+async function getByIdsAndNotEqUser(groups, userId) {
+    return await Group.find({ _id: { $in: groups }, 'users.user': { $ne: userId } });
+}
+
+async function getBy(clause, selection = '-users') {
+    return await Group.find(clause).select(selection);
 }
 
 async function create(groupParam) {
@@ -105,7 +138,7 @@ async function _delete(id) {
 }
 
 async function checkUserGroup(group, user) {
-    if(user.isSU) {
+    if (user.isSU) {
         return true;
     }
     return await getByIdUserAndRoles(group, user.sub, [Role.AdminGrupo]) ? true : false;

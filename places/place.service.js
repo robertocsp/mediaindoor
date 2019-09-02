@@ -13,6 +13,8 @@ module.exports = {
     getByUserAndRoles,
     getByGroup,
     getByNotInGroup,
+    getByUserAndNotInId,
+    getByIdsAndNotEqUser,
     create,
     update,
     delete: _delete
@@ -80,8 +82,16 @@ async function getByNotInGroup(groupId, user) {
     return await placeService.getBy(clause);
 }
 
-async function getBy(clause, select) {
-    return await Place.find(clause).select(select ? select : '-users');
+async function getByUserAndNotInId(places, userId) {
+    return await Place.find({ _id: { $nin: places }, 'users.user': userId });
+}
+
+async function getByIdsAndNotEqUser(places, userId) {
+    return await Place.find({ _id: { $in: places }, 'users.user': { $ne: userId } });
+}
+
+async function getBy(clause, selection = '-users') {
+    return await Place.find(clause).select(selection);
 }
 
 async function create(placeParam) {

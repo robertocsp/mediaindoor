@@ -36,13 +36,13 @@ function getUserToken(req, res, next) {
         .catch(err => next(err));
 }
 
-function register(req, res, next) {    
+function register(req, res, next) {
     userService.create(req.body)
         .then(result => {
             if (req.body.groups) {
                 addUserToGroup(result, Array.isArray(req.body.groups) ? req.body.groups : [req.body.groups]);
             }
-            
+
             if (req.body.places) {
                 addUserToPlace(result, Array.isArray(req.body.places) ? req.body.places : [req.body.places]);
             }
@@ -66,7 +66,7 @@ function register(req, res, next) {
             placeService.getById(places[i].place).then(place => {
                 place.users.push({ user: result.user._id, role: places[i].role });
                 place.save();
-                addUserToGroup(result, [{group: place.group, role: places[i].role}]);
+                addUserToGroup(result, [{ group: place.group, role: places[i].role }]);
             }).catch(err => {
                 console.error(err);
             });
@@ -75,9 +75,33 @@ function register(req, res, next) {
 }
 
 function getAll(req, res, next) {
-    userService.getAll()
-        .then(users => res.json(users))
+    let userPromise;
+    if (req.query._page && req.query._limit) {
+        userPromise = innerGetPaginated();
+    } else if (req.query.ni) {
+        userPromise = innerGetNI();
+    } else {
+        userPromise = innerGetAll();
+    }
+    userPromise.then(groups => res.json(groups))
         .catch(err => next(err));
+
+    function innerGetPaginated() {
+        return userService.getAllPaginated(req.query._page, req.query._limit, req.user);
+    }
+
+    function innerGetAll() {
+        return userService.getAll(req.user);
+    }
+
+    function innerGetNI() {
+        return userService.getAllNI(req.query.ni.split(';').map(uid => {
+            if (uid === 'current') {
+                return req.user.sub;
+            }
+            return uid;
+        }), req.user);
+    }
 }
 
 function getCurrent(req, res, next) {
@@ -93,14 +117,127 @@ function getById(req, res, next) {
 }
 
 function update(req, res, next) {
+    console.log('req.params.id:: ' + req.params.id);
+    console.log('req.body:: ' + req.body);
     userService.update(req.params.id, req.body)
-        .then(() => res.json({}))
+        .then(user => {
+            console.log('user:: ' + user);
+            //TODO PEGAR OS GRUPOS E LOCAIS ONDE O USUARIO EXISTA E A ROLE SEJA DIFERENTE DA PASSADA
+            const groupsArray = Array.prototype.map.call(user.groups, function (item) { return item.group; });
+            console.log('groupsArray:: ' + groupsArray);
+            console.log(Array.isArray(groupsArray));
+            // pega os grupos aos quais o usuario não pertence mais
+            groupService.getByUserAndRolesAndNotInId(
+                groupsArray,
+                req.params.id,
+                [Role.AdminGrupo],
+                {}).then(groups => {
+                    console.log('groups1:: ' + groups);
+                    for (i in groups) {
+                        let group = groups[i];
+                        console.log('groups[' + i + ']:: ' + group);
+                        const index = group.users.findIndex(userObject => {
+                            return userObject.user === user._id;
+                        });
+                        group.users.splice(index, 1);
+                        group.save();
+                    }
+                    console.log('groups1FIMFIMFIM:: ');
+                }).catch(err => {
+                    console.error(err);
+                });
+
+            groupService.getByIdsAndNotEqUser(
+                groupsArray,
+                req.params.id).then(groups => {
+                    console.log('groups2:: ' + groups);
+                    for (i in groups) {
+                        let group = groups[i];
+                        const index = user.groups.findIndex(groupObject => {
+                            return groupObject.group === group._id;
+                        });
+                        group.users.push({
+                            user: user._id,
+                            role: user.groups[index].role
+                        });
+                        group.save();
+                    }
+                    console.log('groups2FIMFIMFIM:: ');
+                }).catch(err => {
+                    console.error(err);
+                });
+
+            const placesArray = Array.prototype.map.call(user.places, function (item) { return item.place; });
+            console.log('placesArray:: ' + placesArray);
+            console.log(Array.isArray(placesArray));
+            // pega os locais aos quais o usuario não pertence mais
+            placeService.getByUserAndNotInId(
+                placesArray,
+                req.params.id).then(places => {
+                    console.log('places1:: ' + places);
+                    for (i in places) {
+                        let place = places[i];
+                        console.log('places[' + i + ']:: ' + place);
+                        const index = place.users.findIndex(userObject => {
+                            return userObject.user === user._id;
+                        });
+                        place.users.splice(index, 1);
+                        place.save();
+                    }
+                    console.log('places1FIMFIMFIM:: ');
+                }).catch(err => {
+                    console.error(err);
+                });
+
+            placeService.getByIdsAndNotEqUser(
+                placesArray,
+                req.params.id).then(places => {
+                    console.log('places2:: ' + places);
+                    for (i in places) {
+                        let place = places[i];
+                        const index = user.places.findIndex(placeObject => {
+                            return placeObject.place === place._id;
+                        });
+                        place.users.push({
+                            user: user._id,
+                            role: user.places[index].role
+                        });
+                        place.save();
+                    }
+                    console.log('places2FIMFIMFIM:: ');
+                }).catch(err => {
+                    console.error(err);
+                });
+            console.log('FFFIIIIIIMMM');
+            return res.json({});
+        })
         .catch(err => next(err));
 }
 
 function _delete(req, res, next) {
     userService.delete(req.params.id)
-        .then(() => res.json({}))
+        .then(() => {
+            groupService.getByUser(req.params.id).then(group => {
+                const index = group.users.findIndex(userObject => {
+                    return userObject.user === user._id;
+                });
+                group.users.splice(index, 1);
+                group.save();
+            }).catch(err => {
+                console.error(err);
+            });
+            // pega os locais aos quais o usuario não pertence mais
+            placeService.getByUser(req.params.id).then(place => {
+                const index = place.users.findIndex(userObject => {
+                    return userObject.user === user._id;
+                });
+                place.users.splice(index, 1);
+                place.save();
+            }).catch(err => {
+                console.error(err);
+            });
+            return res.json({});
+        })
         .catch(err => next(err));
 }
 
@@ -125,7 +262,7 @@ async function validateRegister(req, res, next) {
         let userAdminGroups = await groupService.getByUserAndRoles(req.user.sub, [Role.AdminGrupo]);
         let userAdminPlaces = await placeService.getByUserAndRoles(req.user.sub, [Role.AdminLocal]);
         validations.push(body('groups').custom(async groups => {
-            if(userAdminGroups.length === 0 && userAdminPlaces.length === 0) {
+            if (userAdminGroups.length === 0 && userAdminPlaces.length === 0) {
                 return Promise.reject('Erro Inesperado!');
             }
             if (!groups && !req.body.places) {
@@ -147,9 +284,9 @@ async function validateRegister(req, res, next) {
             validation = validation.optional({ checkFalsy: true });
         }
         validations.push(validation.custom(async groups => {
-            if(isOptional && !groups) {
+            if (isOptional && !groups) {
                 return;
-            } else if(!isOptional && !groups) {
+            } else if (!isOptional && !groups) {
                 return Promise.reject('Campo Grupo é inválido.');
             }
             groups = Array.isArray(groups) ? groups : [groups];
@@ -183,25 +320,25 @@ async function validateRegister(req, res, next) {
             validation = validation.optional({ checkFalsy: true });
         }
         validation = validation.custom(async places => {
-            if(isOptional && !places) {
+            if (isOptional && !places) {
                 return;
-            } else if(!isOptional && !places) {
+            } else if (!isOptional && !places) {
                 return Promise.reject('Campo Local é inválido.');
             }
             places = Array.isArray(places) ? places : [places];
-            
+
             for (let i in places) {
                 if (!roles.includes(places[i].role)) {
                     return Promise.reject('Campo Perfil é inválido.');
                 }
                 let statemet;
                 if (userGroups.length) {
-                    const clause = { 
+                    const clause = {
                         _id: places[i].place,
                         $or: [
                             { group: { $in: userGroups } },
-                            { 'users': { $elemMatch: { 'user': req.user.sub, 'role': { $in: [Role.AdminLocal] } } } } 
-                        ] 
+                            { 'users': { $elemMatch: { 'user': req.user.sub, 'role': { $in: [Role.AdminLocal] } } } }
+                        ]
                     };
                     statemet = placeService.getBy(clause);
                 } else {

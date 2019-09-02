@@ -14,8 +14,12 @@ module.exports = {
     authenticate,
     getUserToken,
     getAll,
+    getAllPaginated,
+    getAllNI,
     getOne,
     getById,
+    getBy,
+    getUsersByGroupsAndPlaces,
     create,
     update,
     delete: _delete
@@ -47,8 +51,53 @@ async function getUserToken({ username, password }) {
     }
 }
 
-async function getAll() {
-    return await User.find().select('-hash');
+async function getAll(user) {
+    if (user.isSU) {
+        return await User.find().select('-hash');
+    }
+
+    return await User.find(getNonSUClause({}, user)).select('-hash');
+
+}
+
+async function getAllPaginated(page, itemsPerPage, user) {
+    if (user.isSU) {
+        let users = await User.find()
+            .skip((page - 1) * itemsPerPage)
+            .limit(itemsPerPage * 1)
+            .select('-hash');
+        let usersCount = await User.countDocuments();
+        return { usersCount: usersCount, users: users };
+    }
+    let users = await User.find(getNonSUClause({}, user))
+        .skip((page - 1) * itemsPerPage)
+        .limit(itemsPerPage * 1)
+        .select('-hash');
+    let usersCount = await User.countDocuments(getNonSUClause({}, user));
+    return { usersCount: usersCount, users: users };
+}
+
+async function getAllNI(usersNI, user) {
+    const clause = {
+        '_id': {
+            $nin: usersNI
+        }
+    }
+    if (!user.isSU) {
+        await getNonSUClause(clause, user);
+    }
+    return userService.getBy(clause);
+}
+
+async function getNonSUClause(clause, user) {
+    clause['$or'] = [{
+        groups: {
+            $in: await groupService.getByUserAndRoles(user.sub, [Role.AdminGrupo])
+        },
+        places: {
+            $in: await placeService.getByUserAndRoles(user.sub, [Role.AdminLocal])
+        }
+    }];
 }
 
 async function getOne(clause) {
@@ -59,8 +108,20 @@ async function getById(id) {
     return await User.findById(id).select('-hash -createdDate');
 }
 
+async function getBy(clause) {
+    return await User.find(clause).select('-hash -createdDate');
+}
+
+async function getUsersByGroupsAndPlaces(){
+    
+}
+
 async function create(userParam) {
     const user = new User(userParam);
+    console.log(userParam);
+    console.log(user);
+    console.log(user.groups);
+    console.log(user.places);
 
     // hash autogen password to validate email
     const password = intformat(generator.next(), 'dec');
@@ -92,7 +153,7 @@ async function update(id, userParam) {
     // copy userParam properties to user
     Object.assign(user, userParam);
 
-    await user.save();
+    return await user.save();
 }
 
 async function _delete(id) {

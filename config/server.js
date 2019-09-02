@@ -36,10 +36,10 @@ app.use(errorHandler);
 
 app.use(fileUpload({
 	createParentPath: true,
-	limits: { fileSize: 1024 * 1024 }, // 1mb
+	limits: { fileSize: 1024 * 1024 * 6 }, // 6mb
 	safeFileNames: true,
 	preserveExtension: true,
-	responseOnLimit: 'Tamanho do arquivo nao pode ultrapassar 1 MB.',
+	responseOnLimit: 'Tamanho do arquivo nao pode ultrapassar 6 MB.',
 	abortOnLimit: true
 }));
 
