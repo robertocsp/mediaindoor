@@ -15,6 +15,8 @@ module.exports = {
     getByUserAndNotInId,
     getByIdsAndNotEqUser,
     getBy,
+    deleteUserFromGroups,
+    addUserToGroup,
     create,
     update,
     delete: _delete,
@@ -104,6 +106,17 @@ async function getByIdsAndNotEqUser(groups, userId) {
 
 async function getBy(clause, selection = '-users') {
     return await Group.find(clause).select(selection);
+}
+
+async function deleteUserFromGroups(user) {
+    return await Group.update({},
+        { $pull: { users: { user: user } } },
+        { multi: true });
+}
+
+async function addUserToGroup(groupId, userData) {
+    await Group.update({ _id: groupId }, { $push: { users: userData } });
+    return await Group.findOne({ _id: groupId });
 }
 
 async function create(groupParam) {

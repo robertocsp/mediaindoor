@@ -117,122 +117,67 @@ function getById(req, res, next) {
 }
 
 function update(req, res, next) {
-    console.log('req.params.id:: ' + req.params.id);
-    console.log('req.body:: ' + req.body);
+    //TODO APLICAR VALIDAÇÂO SE O USUARIO REALIZANDO A OPERAÇÂO POSSUI PERMISSAO PARA EDITAR O USUARIO PASSADO E SE PODE ASSOCIAR AOS GRUPOS/LOCAIS PASSADOS
     userService.update(req.params.id, req.body)
         .then(user => {
-            console.log('user:: ' + user);
-            //TODO PEGAR OS GRUPOS E LOCAIS ONDE O USUARIO EXISTA E A ROLE SEJA DIFERENTE DA PASSADA
-            const groupsArray = Array.prototype.map.call(user.groups, function (item) { return item.group; });
-            console.log('groupsArray:: ' + groupsArray);
-            console.log(Array.isArray(groupsArray));
-            // pega os grupos aos quais o usuario não pertence mais
-            groupService.getByUserAndRolesAndNotInId(
-                groupsArray,
-                req.params.id,
-                [Role.AdminGrupo],
-                {}).then(groups => {
-                    console.log('groups1:: ' + groups);
-                    for (i in groups) {
-                        let group = groups[i];
-                        console.log('groups[' + i + ']:: ' + group);
-                        const index = group.users.findIndex(userObject => {
-                            return userObject.user === user._id;
-                        });
-                        group.users.splice(index, 1);
-                        group.save();
-                    }
-                    console.log('groups1FIMFIMFIM:: ');
-                }).catch(err => {
-                    console.error(err);
-                });
+            // apos incluir um usuario
+            // excluir esse usuario de todos os grupos e locais aos quais ele pertença
+            // adicionar o usuario aos grupos e locais passados
 
-            groupService.getByIdsAndNotEqUser(
-                groupsArray,
-                req.params.id).then(groups => {
-                    console.log('groups2:: ' + groups);
-                    for (i in groups) {
-                        let group = groups[i];
-                        const index = user.groups.findIndex(groupObject => {
-                            return groupObject.group === group._id;
+            groupService.deleteUserFromGroups(user._id).then(_ => {
+                for (let index = 0; index < user.groups.length; index++) {
+                    const group = user.groups[index];
+                    groupService.addUserToGroup(group.group, {
+                        user: user._id,
+                        role: group.role
+                    }).then(() => {
+                    })
+                        .catch(err => {
+                            console.error(err);
                         });
-                        group.users.push({
+                }
+            }).catch(err => {
+                console.error(err);
+            });
+
+            placeService.deleteUserFromPlaces(user._id).then(_ => {
+                for (let index = 0; index < user.places.length; index++) {
+                    const place = user.places[index];
+                    placeService.addUserToPlace(place.place, {
+                        user: user._id,
+                        role: place.role
+                    }).then(place2 => {
+                        groupService.addUserToGroup(place2.group, {
                             user: user._id,
-                            role: user.groups[index].role
+                            role: place.role
+                        }).then(() => {
+                        })
+                            .catch(err => {
+                                console.error(err);
+                            });
+                    })
+                        .catch(err => {
+                            console.error(err);
                         });
-                        group.save();
-                    }
-                    console.log('groups2FIMFIMFIM:: ');
-                }).catch(err => {
-                    console.error(err);
-                });
-
-            const placesArray = Array.prototype.map.call(user.places, function (item) { return item.place; });
-            console.log('placesArray:: ' + placesArray);
-            console.log(Array.isArray(placesArray));
-            // pega os locais aos quais o usuario não pertence mais
-            placeService.getByUserAndNotInId(
-                placesArray,
-                req.params.id).then(places => {
-                    console.log('places1:: ' + places);
-                    for (i in places) {
-                        let place = places[i];
-                        console.log('places[' + i + ']:: ' + place);
-                        const index = place.users.findIndex(userObject => {
-                            return userObject.user === user._id;
-                        });
-                        place.users.splice(index, 1);
-                        place.save();
-                    }
-                    console.log('places1FIMFIMFIM:: ');
-                }).catch(err => {
-                    console.error(err);
-                });
-
-            placeService.getByIdsAndNotEqUser(
-                placesArray,
-                req.params.id).then(places => {
-                    console.log('places2:: ' + places);
-                    for (i in places) {
-                        let place = places[i];
-                        const index = user.places.findIndex(placeObject => {
-                            return placeObject.place === place._id;
-                        });
-                        place.users.push({
-                            user: user._id,
-                            role: user.places[index].role
-                        });
-                        place.save();
-                    }
-                    console.log('places2FIMFIMFIM:: ');
-                }).catch(err => {
-                    console.error(err);
-                });
-            console.log('FFFIIIIIIMMM');
+                }
+            }).catch(err => {
+                console.error(err);
+            });
             return res.json({});
         })
         .catch(err => next(err));
 }
 
 function _delete(req, res, next) {
+    //TODO APLICAR VALIDAÇÂO
     userService.delete(req.params.id)
         .then(() => {
-            groupService.getByUser(req.params.id).then(group => {
-                const index = group.users.findIndex(userObject => {
-                    return userObject.user === user._id;
-                });
-                group.users.splice(index, 1);
-                group.save();
+            groupService.deleteUserFromGroups(req.params.id).then(_ => {
             }).catch(err => {
                 console.error(err);
             });
-            // pega os locais aos quais o usuario não pertence mais
-            placeService.getByUser(req.params.id).then(place => {
-                const index = place.users.findIndex(userObject => {
-                    return userObject.user === user._id;
-                });
-                place.users.splice(index, 1);
-                place.save();
+
+            placeService.deleteUserFromPlaces(req.params.id).then(_ => {
             }).catch(err => {
                 console.error(err);
             });

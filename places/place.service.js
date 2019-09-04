@@ -15,6 +15,8 @@ module.exports = {
     getByNotInGroup,
     getByUserAndNotInId,
     getByIdsAndNotEqUser,
+    deleteUserFromPlaces,
+    addUserToPlace,
     create,
     update,
     delete: _delete
@@ -92,6 +94,17 @@ async function getByIdsAndNotEqUser(places, userId) {
 
 async function getBy(clause, selection = '-users') {
     return await Place.find(clause).select(selection);
+}
+
+async function deleteUserFromPlaces(user) {
+    return await Place.update({},
+        { $pull: { users: { user: user } } },
+        { multi: true });
+}
+
+async function addUserToPlace(placeId, userData) {
+    await Place.update({ _id: placeId }, { $push: { users: userData } });
+    return await Place.findOne({ _id: placeId });
 }
 
 async function create(placeParam) {
