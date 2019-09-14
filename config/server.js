@@ -15,6 +15,7 @@ const adService = require('../advertisements/ad.service');
 const compression = require('compression');
 const helmet = require('helmet');
 const ObjectId = require('mongodb').ObjectID;
+const util = require('../_helpers/util');
 
 io.adapter(redis({ host: 'redis', port: 6379 }));
 
@@ -64,7 +65,12 @@ io.on('connection', (socket) => {
 						{ places: ObjectId(place._id) }]
 					}, '-weight')
 						.then(ads => {
-							console.log('ADS JOINPLACE');
+							ads.map(ad => {
+								if (ad.mimetype !== 'image/svg+xml') {
+									ad.mediapath = 'data:' + ad.mimetype + ';base64,' + util.base64Encode(__dirname + '/../staticfiles' + ad.mediapath);
+								}
+								return ad;
+							});
 							socket.emit('ads-message', JSON.stringify(ads));
 						})
 						.catch(err => console.error(err));

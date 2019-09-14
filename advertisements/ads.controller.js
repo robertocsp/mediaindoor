@@ -2,8 +2,8 @@ const express = require('express');
 const router = express.Router();
 const adService = require('./ad.service');
 const placeService = require('../places/place.service');
-const authorize = require('../_helpers/authorize')
-const util = require('../_helpers/util')
+const authorize = require('../_helpers/authorize');
+const util = require('../_helpers/util');
 const Role = require('../_helpers/role');
 const ObjectId = require('mongodb').ObjectID;
 const io = require('socket.io-emitter')({ host: 'redis', port: 6379 });
@@ -22,7 +22,7 @@ router.delete('/:id', validateAdDelete, _delete);
 module.exports = router;
 //TODO IMPLEMENTAR AS VALIDAÇÕES
 function validateAdRegister(req, res, next) {
-        if(res.statusCode === 413) {
+        if (res.statusCode === 413) {
                 return;
         }
         if (!req.body.places || req.body.places && !Array.isArray(req.body.places) && typeof req.body.places === 'string' && req.body.places.trim() === '') {
@@ -39,7 +39,7 @@ function validateAdRegister(req, res, next) {
 }
 
 async function uploadAd(req, res, next) {
-        if(req.params.id) {
+        if (req.params.id) {
                 req.currentAd = await adService.getById(req.params.id);
         }
 
@@ -47,14 +47,14 @@ async function uploadAd(req, res, next) {
         let uploadPath;
 
         if (!req.files || Object.keys(req.files).length == 0) {
-                if(req.currentAd) {
+                if (req.currentAd) {
                         next();
                 } else {
                         res.status(400).send('No files were uploaded.');
                 }
                 return;
         }
-        if(req.currentAd) {
+        if (req.currentAd) {
                 removeFile(req.currentAd.mediapath);
         }
 
@@ -86,15 +86,15 @@ function register(req, res, next) {
 }
 
 async function updatePlace(req, res, next) {
-        if(req.currentAd) {
-                if(req.currentAdGroups && req.body.groups) {
+        if (req.currentAd) {
+                if (req.currentAdGroups && req.body.groups) {
                         req.body.groups = util.arrayUnique(req.currentAdGroups.concat(req.body.groups));
-                } else if(req.currentAdGroups) {
+                } else if (req.currentAdGroups) {
                         req.body.groups = req.currentAdGroups;
                 }
-                if(req.currentAdPlaces && req.body.places) {
+                if (req.currentAdPlaces && req.body.places) {
                         req.body.places = util.arrayUnique(req.currentAdPlaces.concat(req.body.places));
-                } else if(req.currentAdPlaces) {
+                } else if (req.currentAdPlaces) {
                         req.body.places = req.currentAdPlaces;
                 }
         }
@@ -106,7 +106,7 @@ async function emitMessageToClient(groupsList, placesList, next) {
         if (groupsList) {
                 for (let group of groupsList) {
                         groupPlaces = await placeService.getBy({ group: group }, 'places').then(places => places).catch(err => next(err));
-                        groupPlaces = Array.prototype.map.call(groupPlaces, function(item) { return item._id; });
+                        groupPlaces = Array.prototype.map.call(groupPlaces, function (item) { return item._id; });
                         await emitMessageToPlaces(util.arrayDiff(groupPlaces.concat(placesList)));
                 }
         }
@@ -121,6 +121,12 @@ async function emitMessageToClient(groupsList, placesList, next) {
                                         { places: ObjectId(place._id) }]
                                 }, '-weight')
                                         .then(ads => {
+                                                ads.map(ad => {
+                                                        if (ad.mimetype !== 'image/svg+xml') {
+                                                                ad.mediapath = 'data:' + ad.mimetype + ';base64,' + util.base64Encode(__dirname + '/../staticfiles' + ad.mediapath);
+                                                        }
+                                                        return ad;
+                                                });
                                                 io.to(place._id).emit('ads-message', JSON.stringify(ads));
                                         })
                                         .catch(err => next(err));
