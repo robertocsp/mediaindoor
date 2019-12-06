@@ -65,12 +65,12 @@ io.on('connection', (socket) => {
 						{ places: ObjectId(place._id) }]
 					}, '-weight')
 						.then(ads => {
-							ads.map(ad => {
-								if (ad.mimetype !== 'image/svg+xml') {
-									ad.mediapath = 'data:' + ad.mimetype + ';base64,' + util.base64Encode(__dirname + '/../staticfiles' + ad.mediapath);
-								}
-								return ad;
-							});
+							// ads.map(ad => {
+							// 	if (ad.mimetype !== 'image/svg+xml') {
+							// 		ad.mediapath = 'data:' + ad.mimetype + ';base64,' + util.base64Encode(__dirname + '/../staticfiles' + ad.mediapath);
+							// 	}
+							// 	return ad;
+							// });
 							socket.emit('ads-message', JSON.stringify(ads));
 						})
 						.catch(err => console.error(err));
